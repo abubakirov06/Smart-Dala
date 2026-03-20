@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Smart Dala MVP</title>
+    <style>
+        :root { --primary: #27ae60; --danger: #c0392b; --info: #2980b9; --dark: #333; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f0f2f5; margin: 0; padding: 10px; color: var(--dark); }
+        .card { background: white; max-width: 420px; margin: 0 auto; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        
+        /* Language Bar */
+        .lang-bar { margin-bottom: 20px; display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; }
+        .lang-btn { padding: 10px 5px; font-size: 11px; cursor: pointer; border: 2px solid #ddd; border-radius: 6px; background: white; font-weight: bold; flex: 1; min-width: 75px; color: #555; }
+        .lang-btn.active { background: var(--info); color: white; border-color: var(--info); }
+
+        /* Weather Panel */
+        .sensor-panel { background: #f9f9f9; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; }
+        #weather-val { font-size: 14px; color: var(--info); font-weight: bold; }
+
+        /* Display Window */
+        #display-window { width: 300px; height: 300px; margin: 15px auto; background: #e0e0e0; border: 4px solid var(--dark); border-radius: 12px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        canvas, img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+        
+        /* Buttons */
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .action-btn { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; min-height: 50px; }
+        #file-input { display: none !important; }
+
+        /* Status & AI Box */
+        #status-bar { padding: 15px; border-radius: 50px; color: white; font-weight: bold; margin: 15px 0; background: #888; text-transform: uppercase; }
+        #smartdala-ai-box { display: none; background: #e8f4fd; border-left: 5px solid var(--info); padding: 15px; text-align: left; margin-top: 15px; border-radius: 5px; }
+        .ai-btn { background: var(--info); color: white; border: none; width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        
+        /* Technical Details */
+        #label-container { display: none; margin-top: 10px; text-align: left; background: #eee; padding: 10px; border-radius: 8px; font-size: 13px; line-height: 1.6; }
+        .toggle-btn { background: #7f8c8d; color: white; border: none; padding: 8px; border-radius: 5px; width: 100%; margin-top: 10px; cursor: pointer; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="lang-bar">
+        <button id="l-en" class="lang-btn active" onclick="setLang('en')">English</button>
+        <button id="l-uzl" class="lang-btn" onclick="setLang('uz_lat')">O'zbekcha</button>
+        <button id="l-uzc" class="lang-btn" onclick="setLang('uz_cyr')">Ўзбекча</button>
+        <button id="l-ru" class="lang-btn" onclick="setLang('ru')">Русский</button>
+    </div>
+
+    <h1>Smart Dala</h1>
+
+    <div class="sensor-panel">
+        <span>🌍 <span id="label-weather">Weather:</span></span>
+        <b id="weather-val">Loading...</b>
+    </div>
+    
+    <div class="btn-group">
+        <button id="btn-camera" class="action-btn" onclick="startWebcam()">Camera</button>
+        <label id="btn-gallery" for="file-input" class="action-btn">Gallery</label>
+        <input type="file" id="file-input" accept="image/*" onchange="handleFile(event)">
+    </div>
+
+    <div id="display-window">
+        <div id="webcam-box"></div>
+        <img id="img-preview" style="display:none;" />
+    </div>
+
+    <div id="status-bar">READY</div>
+
+    <div id="smartdala-ai-box">
+        <strong id="ai-header">Smart Dala AI Insight:</strong>
+        <p id="ai-text">...</p>
+        <button id="btn-ai" class="ai-btn" onclick="askSmartDala()">Get Advice</button>
+    </div>
+
+    <button id="toggle-details" class="toggle-btn" style="display:none;" onclick="toggleDetails()">Technical Details</button>
+    <div id="label-container"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+<script>
+    const MODEL_URL = "https://teachablemachine.withgoogle.com/models/tEtyLwmCq/";
+    let model, webcam, maxPredictions;
+    let currentPredictionRaw = "";
+    let currentLang = 'en';
+    let liveWeather = "Unknown";
+    let lastResult = null;
+
+    const translations = {
+        en: { camera: "Camera", gallery: "Gallery", ai_header: "Smart Dala AI Insight:", ai_btn: "Get Advice", loading: "AI Thinking...", healthy: "HEALTHY", alert: "ALERT", weather_lbl: "Weather:", details: "Technical Details", ready: "READY", prob_lbl: "Probabilities:" },
+        uz_lat: { camera: "Kamera", gallery: "Galereya", ai_header: "Smart Dala AI Maslahati:", ai_btn: "Maslahat Olish", loading: "AI o'ylamoqda...", healthy: "SOG'LOM", alert: "XAVF", weather_lbl: "Ob-havo:", details: "Texnik Tafsilotlar", ready: "TAYYOR", prob_lbl: "Ehtimolliklar:" },
+        uz_cyr: { camera: "Камера", gallery: "Галерея", ai_header: "Smart Dala AI Маслаҳати:", ai_btn: "Маслаҳат Олиш", loading: "AI ўйламоқда...", healthy: "СОҒЛОМ", alert: "ХАВФ", weather_lbl: "Об-ҳаво:", details: "Техник Тафсилотлар", ready: "ТАЙЁР", prob_lbl: "Эҳтимолликлар:" },
+        ru: { camera: "Камера", gallery: "Галерея", ai_header: "Smart Dala AI Совет:", ai_btn: "Получить Совет", loading: "AI думает...", healthy: "ЗДОРОВОЕ", alert: "ВНИМАНИЕ", weather_lbl: "Погода:", details: "Технические Детали", ready: "ГОТОВ", prob_lbl: "Вероятности:" }
+    };
+
+    const diseaseMap = {
+        "Healthy cotton plants and leaves": { en: "Healthy", uz_lat: "Sog'lom", uz_cyr: "Соғлом", ru: "Здорово" },
+        "Bacterial Blight": { en: "Bacterial Blight", uz_lat: "Bakterial Kuyish", uz_cyr: "Бактериал Куйиш", ru: "Бактериальный Ожог" },
+        "Cotton curl virus": { en: "Cotton Curl Virus", uz_lat: "Barg Burishishi", uz_cyr: "Барг Буришиши", ru: "Вирус Скручивания" },
+        "Fusarium wilt": { en: "Fusarium Wilt", uz_lat: "Fuzarioz So'lish", uz_cyr: "Фузариоз Сўлиш", ru: "Фузариозное Увядание" },
+        "Aphids": { en: "Aphids", uz_lat: "Shiralar", uz_cyr: "Ширалар", ru: "Тля" },
+        "Cotton armyworm": { en: "Cotton Armyworm", uz_lat: "Ko'sak Qurti", uz_cyr: "Кўсак Қурти", ru: "Совка" }
+    };
+
+    window.onload = () => { getLiveWeather(); setLang('en'); };
+
+    async function getLiveWeather() {
+        try {
+            const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=41.55&longitude=60.63&current_weather=true");
+            const data = await res.json();
+            liveWeather = `${data.current_weather.temperature}°C, ${data.current_weather.windspeed}km/h`;
+            document.getElementById("weather-val").innerText = liveWeather;
+        } catch (e) { document.getElementById("weather-val").innerText = "22°C"; }
+    }
+
+    function setLang(lang) {
+        currentLang = lang;
+        document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+        const btnId = lang === 'en' ? 'l-en' : lang === 'uz_lat' ? 'l-uzl' : lang === 'uz_cyr' ? 'l-uzc' : 'l-ru';
+        document.getElementById(btnId).classList.add('active');
+        
+        document.getElementById('btn-camera').innerText = translations[lang].camera;
+        document.getElementById('btn-gallery').innerText = translations[lang].gallery;
+        document.getElementById('ai-header').innerText = translations[lang].ai_header;
+        document.getElementById('btn-ai').innerText = translations[lang].ai_btn;
+        document.getElementById('label-weather').innerText = translations[lang].weather_lbl;
+        document.getElementById('toggle-details').innerText = translations[lang].details;
+
+        const statusBar = document.getElementById("status-bar");
+        if (["READY", "TAYYOR", "ТАЙЁР", "ГОТОВ"].includes(statusBar.innerText)) {
+            statusBar.innerText = translations[lang].ready;
+        }
+        if (lastResult) refreshTechnicalDetails(lastResult);
+    }
+
+    async function setupModel() {
+        if (!model) {
+            document.getElementById("status-bar").innerText = "...";
+            model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
+            maxPredictions = model.getTotalClasses();
+        }
+    }
+
+    async function startWebcam() {
+        await setupModel();
+        if (webcam) webcam.stop();
+        document.getElementById("img-preview").style.display = "none";
+        document.getElementById("webcam-box").style.display = "block";
+        
+        // Redmi Note 13 Optimized: Forces back camera
+        webcam = new tmImage.Webcam(300, 300, true); 
+        await webcam.setup({ facingMode: "environment" }); 
+        await webcam.play();
+        
+        document.getElementById("webcam-box").innerHTML = "";
+        document.getElementById("webcam-box").appendChild(webcam.canvas);
+        requestAnimationFrame(webcamLoop);
+    }
+
+    async function webcamLoop() {
+        if (webcam) { webcam.update(); await predict(webcam.canvas); requestAnimationFrame(webcamLoop); }
+    }
+
+    async function handleFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        await setupModel();
+        if (webcam) { webcam.stop(); webcam = null; }
+        document.getElementById("webcam-box").style.display = "none";
+        const img = document.getElementById("img-preview");
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            img.src = e.target.result;
+            img.style.display = "block";
+            img.onload = () => predict(img);
+        };
+        reader.readAsDataURL(file);
+        event.target.value = "";
+    }
+
+    async function predict(inputElement) {
+        const prediction = await model.predict(inputElement);
+        lastResult = prediction;
+        refreshTechnicalDetails(prediction);
+    }
+
+    function refreshTechnicalDetails(prediction) {
+        let highestProb = 0;
+        let bestMatch = "";
+        const labels = document.getElementById("label-container");
+        labels.innerHTML = `<b>${translations[currentLang].prob_lbl}</b><br>`;
+        
+        for (let i = 0; i < maxPredictions; i++) {
+            const prob = (prediction[i].probability * 100).toFixed(0);
+            const rawName = prediction[i].className;
+            const transName = diseaseMap[rawName] ? diseaseMap[rawName][currentLang] : rawName;
+            
+            labels.innerHTML += `${transName}: ${prob}%<br>`;
+            if (prediction[i].probability > highestProb) {
+                highestProb = prediction[i].probability;
+                bestMatch = rawName;
+            }
+        }
+        currentPredictionRaw = bestMatch;
+        updateUI(bestMatch, highestProb);
+    }
+
+    function toggleDetails() {
+        const lc = document.getElementById("label-container");
+        lc.style.display = (lc.style.display === "none") ? "block" : "none";
+    }
+
+    function updateUI(name, prob) {
+        const bar = document.getElementById("status-bar");
+        const aiBox = document.getElementById("smartdala-ai-box");
+        document.getElementById("toggle-details").style.display = "block";
+        const translatedDisease = diseaseMap[name] ? diseaseMap[name][currentLang] : name;
+
+        if (prob < 0.5) { bar.style.background = "#888"; bar.innerText = "..."; return; }
+        
+        if (name.toLowerCase().includes("healthy")) {
+            bar.style.background = "#27ae60"; bar.innerText = translations[currentLang].healthy;
+            aiBox.style.display = "none";
+        } else {
+            bar.style.background = "#c0392b"; 
+            bar.innerText = translations[currentLang].alert + ": " + translatedDisease.toUpperCase();
+            aiBox.style.display = "block";
+            document.getElementById("ai-text").innerText = translatedDisease;
+        }
+    }
+
+    async function askSmartDala() {
+        const aiText = document.getElementById("ai-text");
+        aiText.innerText = translations[currentLang].loading;
+        
+        const API_KEY = "AIzaSyAvf0niyDzfdA2K-LTHZK-J_qe6uycOYDI"; 
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: `Act as Smart Dala AI. Language: ${currentLang}. Detection: ${currentPredictionRaw}. Weather: ${liveWeather}. Give 3 quick treatment steps for a farmer in Uzbekistan. Answer ONLY in ${currentLang}.` }] }]
+                })
+            });
+            const data = await response.json();
+            aiText.innerText = data.candidates[0].content.parts[0].text;
+        } catch (e) { aiText.innerText = "Connection Error! Ensure you are using a live URL (https)."; }
+    }
+</script>
+</body>
+</html>
