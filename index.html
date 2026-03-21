@@ -3,26 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Smart Dala MVP</title>
+    <title>Smart Dala Pro</title>
     <style>
-        :root { --primary: #27ae60; --danger: #c0392b; --info: #2980b9; --dark: #333; }
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f0f2f5; margin: 0; padding: 10px; color: var(--dark); }
-        .card { background: white; max-width: 420px; margin: 0 auto; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .lang-bar { margin-bottom: 20px; display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; }
-        .lang-btn { padding: 10px 5px; font-size: 11px; cursor: pointer; border: 2px solid #ddd; border-radius: 6px; background: white; font-weight: bold; flex: 1; min-width: 75px; color: #555; }
+        :root { --primary: #27ae60; --danger: #c0392b; --info: #2980b9; --warning: #e67e22; --dark: #333; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f4f7f6; margin: 0; padding: 10px; color: var(--dark); }
+        .card { background: white; max-width: 450px; margin: 0 auto; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
+        /* Language Bar */
+        .lang-bar { margin-bottom: 20px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+        .lang-btn { padding: 8px 12px; font-size: 12px; cursor: pointer; border: 1px solid #ddd; border-radius: 8px; background: white; font-weight: 600; transition: 0.3s; }
         .lang-btn.active { background: var(--info); color: white; border-color: var(--info); }
-        .sensor-panel { background: #f9f9f9; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; }
-        #weather-val { font-size: 14px; color: var(--info); font-weight: bold; }
-        #display-window { width: 300px; height: 300px; margin: 15px auto; background: #e0e0e0; border: 4px solid var(--dark); border-radius: 12px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-        canvas, img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .action-btn { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; min-height: 50px; }
-        #file-input { display: none !important; }
-        #status-bar { padding: 15px; border-radius: 50px; color: white; font-weight: bold; margin: 15px 0; background: #888; text-transform: uppercase; }
-        #smartdala-ai-box { display: none; background: #e8f4fd; border-left: 5px solid var(--info); padding: 15px; text-align: left; margin-top: 15px; border-radius: 5px; }
-        .ai-btn { background: var(--info); color: white; border: none; width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; margin-top: 10px; cursor: pointer; }
-        #label-container { display: none; margin-top: 10px; text-align: left; background: #eee; padding: 10px; border-radius: 8px; font-size: 13px; line-height: 1.6; }
-        .toggle-btn { background: #7f8c8d; color: white; border: none; padding: 8px; border-radius: 5px; width: 100%; margin-top: 10px; cursor: pointer; font-size: 12px; }
+
+        /* Display Window */
+        #display-window { 
+            width: 320px; height: 320px; margin: 20px auto; 
+            background: #000; border: 5px solid #fff; 
+            border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;
+        }
+        canvas, img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Controls */
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+        .action-btn { 
+            background: var(--primary); color: white; border: none; padding: 15px; 
+            border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 15px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .capture-btn { background: var(--warning); grid-column: span 2; display: none; }
+        #file-input { display: none; }
+
+        /* Status & AI */
+        #status-bar { 
+            padding: 15px; border-radius: 12px; color: white; font-weight: bold; 
+            margin: 15px 0; background: #7f8c8d; text-transform: uppercase; letter-spacing: 1px;
+        }
+        #ai-box { 
+            display: none; background: #ebf5fb; border-left: 6px solid var(--info); 
+            padding: 20px; text-align: left; margin-top: 15px; border-radius: 10px; 
+        }
+        .ai-btn { background: var(--info); color: white; border: none; width: 100%; padding: 14px; border-radius: 10px; font-weight: bold; margin-top: 15px; cursor: pointer; }
+        
+        .loading-spinner { border: 3px solid #f3f3f3; border-top: 3px solid var(--info); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; margin-right: 10px; vertical-align: middle; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -35,34 +58,29 @@
         <button id="l-ru" class="lang-btn" onclick="setLang('ru')">Русский</button>
     </div>
 
-    <h1>Smart Dala</h1>
-
-    <div class="sensor-panel">
-        <span>🌍 <span id="label-weather">Weather:</span></span>
-        <b id="weather-val">Loading...</b>
-    </div>
-    
-    <div class="btn-group">
-        <button id="btn-camera" class="action-btn" onclick="startWebcam()">Camera</button>
-        <label id="btn-gallery" for="file-input" class="action-btn" style="display:flex; align-items:center; justify-content:center;">Gallery</label>
-        <input type="file" id="file-input" accept="image/*" onchange="handleFile(event)">
-    </div>
+    <h2 style="margin:0; color:var(--primary);">Smart Dala AI</h2>
+    <p id="weather-val" style="font-size:14px; color:#666;">Weather: Loading...</p>
 
     <div id="display-window">
-        <div id="webcam-box"></div>
+        <div id="webcam-container"></div>
         <img id="img-preview" style="display:none;" />
     </div>
 
-    <div id="status-bar">READY</div>
-
-    <div id="smartdala-ai-box">
-        <strong id="ai-header">Smart Dala AI Insight:</strong>
-        <p id="ai-text">...</p>
-        <button id="btn-ai" class="ai-btn" onclick="askSmartDala()">Get Advice</button>
+    <button id="btn-capture" class="action-btn capture-btn" onclick="capturePhoto()">📸 Take Photo</button>
+    
+    <div class="btn-group">
+        <button id="btn-camera" class="action-btn" onclick="startCamera()">📷 Camera</button>
+        <label id="btn-gallery" for="file-input" class="action-btn">🖼️ Gallery</label>
+        <input type="file" id="file-input" accept="image/*" onchange="handleGallery(event)">
     </div>
 
-    <button id="toggle-details" class="toggle-btn" style="display:none;" onclick="toggleDetails()">Technical Details</button>
-    <div id="label-container"></div>
+    <div id="status-bar">Ready</div>
+
+    <div id="ai-box">
+        <strong id="ai-header">Advice:</strong>
+        <p id="ai-text" style="font-size:14px; line-height:1.5; margin-top:10px;"></p>
+        <button id="btn-ai" class="ai-btn" onclick="getAIAdvice()">Get Advice</button>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
@@ -70,20 +88,17 @@
 
 <script>
     const MODEL_URL = "https://teachablemachine.withgoogle.com/models/tEtyLwmCq/";
-    let model, webcam, maxPredictions, lastResult;
-    let currentPredictionRaw = "";
-    let currentLang = 'en';
-    let liveWeather = "Unknown";
+    let model, webcam, currentLang = 'en', lastPrediction = "";
 
     const translations = {
-        en: { camera: "Camera", gallery: "Gallery", ai_header: "Smart Dala AI Insight:", ai_btn: "Get Advice", loading: "AI Thinking...", healthy: "HEALTHY", alert: "ALERT", weather_lbl: "Weather:", details: "Technical Details", ready: "READY", prob_lbl: "Probabilities:" },
-        uz_lat: { camera: "Kamera", gallery: "Galereya", ai_header: "Smart Dala AI Maslahati:", ai_btn: "Maslahat Olish", loading: "AI o'ylamoqda...", healthy: "SOG'LOM", alert: "XAVF", weather_lbl: "Ob-havo:", details: "Texnik Tafsilotlar", ready: "TAYYOR", prob_lbl: "Ehtimolliklar:" },
-        uz_cyr: { camera: "Камера", gallery: "Галерея", ai_header: "Smart Dala AI Маслаҳати:", ai_btn: "Маслаҳат Олиш", loading: "AI ўйламоқда...", healthy: "СОҒЛОМ", alert: "ХАВФ", weather_lbl: "Об-ҳаво:", details: "Техник Тафсилотлар", ready: "ТАЙЁР", prob_lbl: "Эҳтимолликлар:" },
-        ru: { camera: "Камера", gallery: "Галерея", ai_header: "Smart Dala AI Совет:", ai_btn: "Получить Совет", loading: "AI думает...", healthy: "ЗДОРОВОЕ", alert: "ВНИМАНИЕ", weather_lbl: "Погода:", details: "Технические Детали", ready: "ГОТОВ", prob_lbl: "Вероятности:" }
+        en: { camera: "Camera", gallery: "Gallery", capture: "Take Photo", ai_header: "AI Insight:", ai_btn: "Get Advice", loading: "Consulting AI...", healthy: "HEALTHY", alert: "DISEASE DETECTED", ready: "READY" },
+        uz_lat: { camera: "Kamera", gallery: "Galereya", capture: "Rasmga olish", ai_header: "AI Maslahati:", ai_btn: "Maslahat olish", loading: "AI maslahat bermoqda...", healthy: "SOG'LOM", alert: "KASALLIK ANIQLANDI", ready: "TAYYOR" },
+        uz_cyr: { camera: "Камера", gallery: "Галерея", capture: "Расмга олиш", ai_header: "AI Маслаҳати:", ai_btn: "Маслаҳат олиш", loading: "AI маслаҳат бермоқда...", healthy: "СОҒЛОМ", alert: "КАСАЛЛИК АНИҚЛАНДИ", ready: "ТАЙЁР" },
+        ru: { camera: "Камера", gallery: "Галерея", capture: "Сделать фото", ai_header: "AI Совет:", ai_btn: "Получить совет", loading: "AI думает...", healthy: "ЗДОРОВО", alert: "ОБНАРУЖЕНА БОЛЕЗНЬ", ready: "ГОТОВ" }
     };
 
     const diseaseMap = {
-        "Healthy cotton plants and leaves": { en: "Healthy", uz_lat: "Sog'lom", uz_cyr: "Соғлом", ru: "Здорово" },
+        "Healthy cotton plants and leaves": { en: "Healthy Cotton", uz_lat: "Sog'lom G'oza", uz_cyr: "Соғлом Ғўза", ru: "Здоровый Хлопок" },
         "Bacterial Blight": { en: "Bacterial Blight", uz_lat: "Bakterial Kuyish", uz_cyr: "Бактериал Куйиш", ru: "Бактериальный Ожог" },
         "Cotton curl virus": { en: "Cotton Curl Virus", uz_lat: "Barg Burishishi", uz_cyr: "Барг Буришиши", ru: "Вирус Скручивания" },
         "Fusarium wilt": { en: "Fusarium Wilt", uz_lat: "Fuzarioz So'lish", uz_cyr: "Фузариоз Сўлиш", ru: "Фузариозное Увядание" },
@@ -91,145 +106,116 @@
         "Cotton armyworm": { en: "Cotton Armyworm", uz_lat: "Ko'sak Qurti", uz_cyr: "Кўсак Қурти", ru: "Совка" }
     };
 
-    window.onload = () => { getLiveWeather(); setLang('en'); };
+    window.onload = async () => {
+        setLang('en');
+        getWeather();
+        model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
+    };
 
-    async function getLiveWeather() {
+    async function getWeather() {
         try {
             const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=41.55&longitude=60.63&current_weather=true");
             const data = await res.json();
-            liveWeather = `${data.current_weather.temperature}°C, ${data.current_weather.windspeed}km/h`;
-            document.getElementById("weather-val").innerText = liveWeather;
-        } catch (e) { document.getElementById("weather-val").innerText = "22°C"; }
+            document.getElementById("weather-val").innerText = `Urgench: ${data.current_weather.temperature}°C | ${data.current_weather.windspeed}km/h`;
+        } catch(e) { document.getElementById("weather-val").innerText = "Urgench: 22°C"; }
     }
 
     function setLang(lang) {
         currentLang = lang;
         document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(lang === 'en' ? 'l-en' : lang === 'uz_lat' ? 'l-uzl' : lang === 'uz_cyr' ? 'l-uzc' : 'l-ru').classList.add('active');
-        document.getElementById('btn-camera').innerText = translations[lang].camera;
-        document.getElementById('btn-gallery').innerText = translations[lang].gallery;
+        document.getElementById(`l-${lang === 'uz_lat' ? 'uzl' : lang === 'uz_cyr' ? 'uzc' : lang}`).classList.add('active');
+        
+        document.getElementById('btn-camera').innerText = "📷 " + translations[lang].camera;
+        document.getElementById('btn-gallery').innerText = "🖼️ " + translations[lang].gallery;
+        document.getElementById('btn-capture').innerText = "📸 " + translations[lang].capture;
         document.getElementById('ai-header').innerText = translations[lang].ai_header;
         document.getElementById('btn-ai').innerText = translations[lang].ai_btn;
-        document.getElementById('label-weather').innerText = translations[lang].weather_lbl;
-        document.getElementById('toggle-details').innerText = translations[lang].details;
-
-        const statusBar = document.getElementById("status-bar");
-        if (["READY", "TAYYOR", "ТАЙЁР", "ГОТОВ"].includes(statusBar.innerText)) {
-            statusBar.innerText = translations[lang].ready;
-        }
-        if (lastResult) refreshUI(lastResult);
+        if (document.getElementById('status-bar').innerText.length < 10) document.getElementById('status-bar').innerText = translations[lang].ready;
     }
 
-    async function setupModel() {
-        if (!model) {
-            model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
-            maxPredictions = model.getTotalClasses();
-        }
-    }
-
-    async function startWebcam() {
-        await setupModel();
-        if (webcam) webcam.stop();
+    async function startCamera() {
         document.getElementById("img-preview").style.display = "none";
-        document.getElementById("webcam-box").style.display = "block";
-        webcam = new tmImage.Webcam(300, 300, true);
+        document.getElementById("webcam-container").style.display = "block";
+        document.getElementById("btn-capture").style.display = "flex";
+        
+        webcam = new tmImage.Webcam(320, 320, true);
         await webcam.setup({ facingMode: "environment" });
         await webcam.play();
-        document.getElementById("webcam-box").innerHTML = "";
-        document.getElementById("webcam-box").appendChild(webcam.canvas);
-        requestAnimationFrame(webcamLoop);
+        document.getElementById("webcam-container").innerHTML = "";
+        document.getElementById("webcam-container").appendChild(webcam.canvas);
+        window.requestAnimationFrame(loop);
     }
 
-    async function webcamLoop() {
-        if (webcam) { webcam.update(); await predict(webcam.canvas); requestAnimationFrame(webcamLoop); }
+    async function loop() {
+        if (webcam && webcam.canvas) {
+            webcam.update();
+            window.requestAnimationFrame(loop);
+        }
     }
 
-    async function handleFile(event) {
+    async function capturePhoto() {
+        const prediction = await model.predict(webcam.canvas);
+        webcam.stop();
+        document.getElementById("btn-capture").style.display = "none";
+        processPrediction(prediction);
+    }
+
+    async function handleGallery(event) {
         const file = event.target.files[0];
         if (!file) return;
-        await setupModel();
-        if (webcam) { webcam.stop(); webcam = null; }
-        document.getElementById("webcam-box").style.display = "none";
+        if (webcam) webcam.stop();
+        document.getElementById("webcam-container").style.display = "none";
         const img = document.getElementById("img-preview");
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            img.src = e.target.result;
-            img.style.display = "block";
-            img.onload = () => predict(img);
+        img.src = URL.createObjectURL(file);
+        img.style.display = "block";
+        img.onload = async () => {
+            const prediction = await model.predict(img);
+            processPrediction(prediction);
         };
-        reader.readAsDataURL(file);
     }
 
-    async function predict(inputElement) {
-        const prediction = await model.predict(inputElement);
-        lastResult = prediction;
-        refreshUI(prediction);
-    }
-
-    function refreshUI(prediction) {
-        let highestProb = 0;
-        let bestMatch = "";
-        const labels = document.getElementById("label-container");
-        labels.innerHTML = `<b>${translations[currentLang].prob_lbl}</b><br>`;
+    function processPrediction(prediction) {
+        let bestMatch = prediction.sort((a, b) => b.probability - a.probability)[0];
+        lastPrediction = bestMatch.className;
         
-        for (let i = 0; i < maxPredictions; i++) {
-            const prob = (prediction[i].probability * 100).toFixed(0);
-            const rawName = prediction[i].className;
-            const transName = diseaseMap[rawName] ? diseaseMap[rawName][currentLang] : rawName;
-            labels.innerHTML += `${transName}: ${prob}%<br>`;
-            if (prediction[i].probability > highestProb) {
-                highestProb = prediction[i].probability;
-                bestMatch = rawName;
-            }
-        }
-        currentPredictionRaw = bestMatch;
-        updateStatus(bestMatch, highestProb);
-    }
-
-    function updateStatus(name, prob) {
         const bar = document.getElementById("status-bar");
-        const aiBox = document.getElementById("smartdala-ai-box");
-        document.getElementById("toggle-details").style.display = "block";
-        const translatedDisease = diseaseMap[name] ? diseaseMap[name][currentLang] : name;
+        const aiBox = document.getElementById("ai-box");
+        const transName = diseaseMap[lastPrediction] ? diseaseMap[lastPrediction][currentLang] : lastPrediction;
 
-        if (prob < 0.5) { bar.style.background = "#888"; bar.innerText = "..."; return; }
-        
-        if (name.toLowerCase().includes("healthy")) {
-            bar.style.background = "#27ae60"; bar.innerText = translations[currentLang].healthy;
+        if (lastPrediction.toLowerCase().includes("healthy")) {
+            bar.style.background = "var(--primary)";
+            bar.innerText = translations[currentLang].healthy + ": " + transName.toUpperCase();
             aiBox.style.display = "none";
         } else {
-            bar.style.background = "#c0392b"; 
-            bar.innerText = translations[currentLang].alert + ": " + translatedDisease.toUpperCase();
+            bar.style.background = "var(--danger)";
+            bar.innerText = translations[currentLang].alert + ": " + transName.toUpperCase();
             aiBox.style.display = "block";
-            document.getElementById("ai-text").innerText = translatedDisease;
+            document.getElementById("ai-text").innerText = transName;
         }
     }
 
-    function toggleDetails() {
-        const lc = document.getElementById("label-container");
-        lc.style.display = (lc.style.display === "none") ? "block" : "none";
-    }
-
-    async function askSmartDala() {
-        const aiText = document.getElementById("ai-text");
-        aiText.innerText = translations[currentLang].loading;
+    async function getAIAdvice() {
+        const btn = document.getElementById("btn-ai");
+        const text = document.getElementById("ai-text");
+        btn.disabled = true;
+        text.innerHTML = `<div class="loading-spinner"></div> ${translations[currentLang].loading}`;
 
         try {
-            // We call our OWN API endpoint, which keeps the key secret
             const response = await fetch("/api/chat", {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    detection: currentPredictionRaw,
-                    weather: liveWeather,
+                    detection: lastPrediction,
+                    weather: document.getElementById("weather-val").innerText,
                     lang: currentLang
                 })
             });
             const data = await response.json();
-            aiText.innerText = data.candidates[0].content.parts[0].text;
+            text.innerText = data.candidates[0].content.parts[0].text;
         } catch (e) {
-            aiText.innerText = "Backend Connection Error. Ensure your Vercel API is deployed.";
+            text.innerText = "Error connecting to AI. Please try again.";
         }
+        btn.disabled = false;
     }
 </script>
 </body>
