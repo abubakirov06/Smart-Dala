@@ -11,8 +11,8 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: 'API Key missing in Vercel' });
         }
 
-        // SWITCHED TO v1 STABLE ENDPOINT
-        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+        // UPDATED TO GEMINI 3 FLASH (The 2026 Stable Model)
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-3-flash:generateContent?key=${API_KEY}`;
 
         const payload = {
             contents: [{
@@ -32,6 +32,10 @@ export default async function handler(req, res) {
 
         if (!response.ok) {
             console.error("Google API Response Error:", data);
+            // If Gemini 3 isn't available on your specific key yet, we try a fallback alias
+            if (data.error?.code === 404) {
+                return res.status(404).json({ error: "Model Not Found. Try updating the model alias to 'gemini-flash-latest'." });
+            }
             return res.status(response.status).json({ error: data.error?.message || "Google API Error" });
         }
 
