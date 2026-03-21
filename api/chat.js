@@ -5,44 +5,42 @@ export default async function handler(req, res) {
 
     try {
         const { detection, weather, lang } = req.body;
+        
+        // Use the Vercel Environment Variable
         const API_KEY = process.env.GEMINI_API_KEY;
 
-        if (!API_KEY) {
-            return res.status(500).json({ error: 'API Key missing in Vercel' });
+        if (!API_KEY || API_KEY.length < 10) {
+            return res.status(500).json({ error: 'API Key is missing or too short in Vercel settings' });
         }
 
-        // UPDATED TO GEMINI 3 FLASH (The 2026 Stable Model)
-        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-3-flash:generateContent?key=${API_KEY}`;
-
-        const payload = {
-            contents: [{
-                parts: [{
-                    text: `Act as Smart Dala AI. Language: ${lang}. Plant Status: ${detection}. Weather: ${weather}. Provide 3 quick, practical treatment steps for a farmer in Uzbekistan. Answer ONLY in ${lang}.`
-                }]
-            }]
-        };
+        // We use v1beta and gemini-flash-latest to ensure it ALWAYS finds a model
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${API_KEY}`;
 
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{
+                        text: `Act as Smart Dala AI. Language: ${lang}. Plant: ${detection}. Weather: ${weather}. Give 3 quick treatment steps. Answer ONLY in ${lang}.`
+                    }]
+                }]
+            })
         });
 
         const data = await response.json();
 
         if (!response.ok) {
-            console.error("Google API Response Error:", data);
-            // If Gemini 3 isn't available on your specific key yet, we try a fallback alias
-            if (data.error?.code === 404) {
-                return res.status(404).json({ error: "Model Not Found. Try updating the model alias to 'gemini-flash-latest'." });
-            }
-            return res.status(response.status).json({ error: data.error?.message || "Google API Error" });
+            console.error("Google Error:", data);
+            return res.status(response.status).json({ 
+                error: data.error?.message || "Google rejected the request",
+                details: data.error
+            });
         }
 
         return res.status(200).json(data);
 
     } catch (err) {
-        console.error("Server Crash:", err);
-        return res.status(500).json({ error: "Server Error: " + err.message });
+        return res.status(500).json({ error: "Server crashed: " + err.message });
     }
 }
