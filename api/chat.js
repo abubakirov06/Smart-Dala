@@ -8,16 +8,16 @@ export default async function handler(req, res) {
         const API_KEY = process.env.GEMINI_API_KEY;
 
         if (!API_KEY) {
-            return res.status(500).json({ error: 'API Key is missing in Vercel settings' });
+            return res.status(500).json({ error: 'API Key missing in Vercel' });
         }
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+        // Updated model string to the "latest" alias which resolves the 404
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
 
-        // THIS IS THE EXACT STRUCTURE GOOGLE REQUIRES
         const payload = {
             contents: [{
                 parts: [{
-                    text: `Act as Smart Dala AI. Language: ${lang}. Plant Status: ${detection}. Weather: ${weather}. Give 3 specific treatment steps for an Uzbek farmer. Answer ONLY in ${lang}.`
+                    text: `Act as Smart Dala AI. Language: ${lang}. Plant Disease: ${detection}. Weather: ${weather}. Give 3 quick treatment steps for a farmer in Uzbekistan. Answer ONLY in ${lang}.`
                 }]
             }]
         };
@@ -31,11 +31,10 @@ export default async function handler(req, res) {
         const data = await response.json();
 
         if (!response.ok) {
-            console.error("Google Error Details:", data);
-            return res.status(response.status).json({ error: data.error?.message || "Google rejected the request" });
+            console.error("Google API Response:", data);
+            return res.status(response.status).json({ error: data.error?.message || "Google API Error" });
         }
 
-        // Return the clean data to the frontend
         return res.status(200).json(data);
 
     } catch (err) {
